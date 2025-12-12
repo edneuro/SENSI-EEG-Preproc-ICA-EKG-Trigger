@@ -1,4 +1,4 @@
-% ICA_Artifact_Removal_TUTORIAL.m
+% example.m
 % =========================================================================
 % TUTORIAL: Independent Component Analysis (ICA) for EKG and DIN Artifact Removal
 
@@ -33,7 +33,7 @@ disp('~ * ~ * TUTORIAL: ICA Artifact Cleaning Demonstration * ~ * ~')
 %%% FILE AND PATH CONFIGURATION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 INFO.fileDir = 'D:\Stanford\Data\artifact_tutorial'; % Directory containing data files
 INFO.figDir = './Figures';                           % Output directory for saving figures
-INFO.fileName = 'example_2';                         % Base name of the input data file
+INFO.fileName = 'example_10';                         % Base name of the input data file
 saveFigs = 1;                                        % 1 to save review figures, 0 otherwise
 
 %%% Load electrode locations %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -66,8 +66,11 @@ load([INFO.fileDir filesep INFO.fileName])
 chanlocs = S.locs; 
 
 % Remove the locations corresponding to the channels previously identified as bad.
+if ~exist('badCh','var') % Ensuring badCh exists
+    badCh = [];
+end
 if ~isempty(badCh)
-    chanlocs(badCh) = [];
+    chanlocs(badCh) = []; % Removing bad channel locations
 end
 
 
@@ -129,7 +132,7 @@ disp('-> Data transformed to ICA space (xICA).')
 
 
 %%% PLOTTING SETUP %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-tempNSources = [1:30]; % Focus on the first 30 components
+tempNSources = [1:124]; % Focus on the first 124 components
 tempStartSec = 5*60;   % Start time for time-series plots (e.g., 5 minutes)
 tempNSec = 10;         % Duration of the time-series plots
 

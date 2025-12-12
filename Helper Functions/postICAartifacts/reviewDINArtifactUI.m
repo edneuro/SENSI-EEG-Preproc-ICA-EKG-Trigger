@@ -102,23 +102,26 @@ for r = 1:nRows
     xlim(ax2, [0, max(eps, (numel(idxPlot)-1)/fs)]);
     xlabel(ax2,'Time (s)'); ylabel(ax2,'Amp');
     title(ax2, 'Time (window)', 'Interpreter','none');
-    % --- (3) Frequency: |FFT| over same window (one-sided) ---
+    % --- (3) Frequency: |FFT| all data (one-sided view) ---
     ax3 = nexttile(T, (r-1)*7 + 5, [1 3]);
-    L = numel(seg);
+    segFFT = xICA(comp, :);        % <-- use the whole IC time series
+    L = numel(segFFT);
     if L < 2
-        hFreq(r) = plot(ax3, 0, abs(seg), 'o', 'Color', col, 'LineWidth', lw);
+        hFreq(r) = plot(ax3, 0, abs(segFFT), 'o', ...
+                        'Color', col, 'LineWidth', lw);
         xlim(ax3,[0, maxFreq]);
     else
         nfft = 2^nextpow2(L);
-        S = fft(double(seg), nfft);
-        Mag = abs(S(1:nfft/2+1));
-        F   = (0:nfft/2) * (fs/nfft);
+        S = fft(double(segFFT), nfft);
+        Mag = abs(S(1:nfft/2+1));          % one-sided magnitude
+        F   = (0:nfft/2) * (fs/nfft);      % 0 .. fs/2
         hFreq(r) = plot(ax3, F, Mag, 'LineWidth', lw, 'Color', col);
         xlim(ax3, [0, maxFreq]);
     end
     grid(ax3,'on');
     xlabel(ax3,'Hz'); ylabel('|X(f)|');
-    title(ax3, '|FFT| (window)', 'Interpreter','none');
+    title(ax3, '|FFT| (full recording)', 'Interpreter','none');
+    
     % Row-wide toggle
     set(ax1, 'ButtonDownFcn', @(~,~)toggleRow(r));
     set(ax2, 'ButtonDownFcn', @(~,~)toggleRow(r));
