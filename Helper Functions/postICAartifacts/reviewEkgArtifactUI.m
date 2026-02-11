@@ -108,14 +108,14 @@ for r = 1:nRows
     L = numel(seg);
     if L < 2
         hFreq(r) = plot(ax3, 0, abs(seg), 'o', 'Color', col, 'LineWidth', lw);
-        xlim(ax3,[0, 60]);
+        xlim(ax3,[0, 10]);
     else
         nfft = 2^nextpow2(L);
         S = fft(double(seg), nfft);
         Mag = abs(S(1:nfft/2+1));
         F   = (0:nfft/2) * (fs/nfft);
         hFreq(r) = plot(ax3, F, Mag, 'LineWidth', lw, 'Color', col);
-        xlim(ax3, [0, 60]);
+        xlim(ax3, [0, 10]);
     end
     grid(ax3,'on');
     xlabel(ax3,'Hz'); ylabel('|X(f)|');

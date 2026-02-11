@@ -33,7 +33,7 @@ disp('~ * ~ * TUTORIAL: ICA Artifact Cleaning Demonstration * ~ * ~')
 %%% FILE AND PATH CONFIGURATION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 INFO.fileDir = 'D:\Stanford\Data\artifact_tutorial'; % Directory containing data files
 INFO.figDir = './Figures';                           % Output directory for saving figures
-INFO.fileName = 'example_3';                         % Base name of the input data file
+INFO.fileName = 'example_2';                         % Base name of the input data file
 INFO.saveFigs = 1;                                        % 1 to save review figures, 0 otherwise
 
 %%% Load electrode locations %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -43,9 +43,10 @@ S = load('locsEGI124.mat','locs');
 % These thresholds control the automated component flagging process.
 
 % DIN (Digital Input) Parameters
-HRFOpts.fmin = 10; % Minimum frequency for detection (Hz)
-HRFOpts.fmax = 50; % Maximum frequency for detection (Hz)
-HRFOpts.bw = .2;   % Half-bandwidth for frequency window (Hz)
+dinOpts.T = 1;     % Din repetition period in seconds. Default: 1 sec
+dinOpts.fmin = 10; % Minimum frequency for detection (Hz)
+dinOpts.fmax = 50; % Maximum frequency for detection (Hz)
+dinOpts.bw = .2;   % Half-bandwidth for frequency window (Hz)
 
 % EKG (Cardiac) Parameters (default values already loaded)
 ekgOpts.fmin = .8;             % Lower bound of cardiac rhythm band (Hz)
@@ -146,8 +147,7 @@ tempNSec = 10;         % Duration of the time-series plots
 
 %%%%%%%%%%%%%%%%%%%%%% DIN Detection %%%%%%%%%%%%%%%%%%%%%%%%%
 % Detect DIN ICA components via harmRatioFromSignal
-[dinSrc, tempDinInfo] = autoDetectDIN(W, xICA, badCh, fs, [], tempNSources, ...
-    tempStartSec, tempNSec, HRFOpts);
+[dinSrc, tempDinInfo] = autoDetectDIN(xICA, fs, tempNSources, dinOpts);
 
 % Interactive review of DIN candidates
 dinSrc = reviewDINArtifactUI(W, xICA, fs, chanlocs, dinSrc, tempDinInfo.reviewCandidates, ...
@@ -161,8 +161,7 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%% EKG Detection %%%%%%%%%%%%%%%%%%%%%%%%%
 % SNR Harmonic Test (detecting beats via spectral analysis)
-[ekgSrc, ekgSus, ~] = autoDetectEkgHarmSNR(xICA, fs, ...
-    tempNSources, ekgOpts);
+[ekgSrc, ekgSus, ~] = autoDetectEkgHarmSNR(xICA, fs, tempNSources, ekgOpts);
 
 % EKG UI - Interactive review of flagged and suspected sources
 ekgSrc = reviewEkgArtifactUI(W, xICA, fs, chanlocs, ekgSrc, ekgSus, ...

@@ -1,4 +1,4 @@
-function [dinSrc, info] = autoDetectDIN(W, xICA, badCh, fs, INFO, nSources, ekgStartSec, ekgNSec, HRFOpts)
+function [dinSrc, info] = autoDetectDIN(xICA, fs, nSources, Opts)
 
 % AUTODETECTDIN
 % Detect DIN ICA components via harmRatioFromSignal + |z|>thress on the selected sources.
@@ -6,13 +6,11 @@ function [dinSrc, info] = autoDetectDIN(W, xICA, badCh, fs, INFO, nSources, ekgS
 % figure for the single strongest non-DIN candidate for review.
 %
 % Usage:
-%   [dinSrc, info] = autoDetectDIN(W, xICA, badCh, fs, INFO, nSources, ekgStartSec, ekgNSec, HRFOpts)
+%   [dinSrc, info] = autoDetectDIN(W, xICA, badCh, fs, INFO, nSources, ekgStartSec, ekgNSec, Opts)
 
 % ---- Defaults
-if nargin < 6 || isempty(nSources),    nSources    = 1:30; end
-if nargin < 7 || isempty(ekgStartSec), ekgStartSec = 5*60; end
-if nargin < 8 || isempty(ekgNSec),     ekgNSec     = 10;   end
-if nargin < 9 || isempty(HRFOpts),     HRFOpts     = struct('fmin',10,'fmax',50,'bw',0.2); end
+if nargin < 3 || isempty(nSources),    nSources    = 1:30; end
+if nargin < 4 || isempty(Opts),        Opts     = struct('fmin',10,'fmax',50,'bw',0.2); end
 
 thress = 2.5;
 
@@ -30,7 +28,7 @@ end
 % ---- Compute DIN metric
 dinCheck = nan(nComp,1);
 for k = nSources
-    out = harmRatioFromSignal(xICA(k,:), fs, HRFOpts);
+    out = harmRatioFromSignal(xICA(k,:), fs, Opts);
     dinCheck(k) = out.ratio_linear;
 end
 
@@ -41,33 +39,86 @@ zVals = zscore(vals, 0, 'omitnan');
 z = nan(nComp,1);
 z(nSources) = zVals;
 
-% ---- Flag DIN components
-dinSrc = nSources(zVals > thress);
-dinSrc = dinSrc(:).';
+% % ---- Flag DIN components
+% dinSrc = nSources(zVals > thress);
+% dinSrc = dinSrc(:).';
+% 
+% % ---- Top non-DIN candidate via two-stage z-score
+% % Stage 1: initial flags
+% initialMask = zVals > thress;
+% dinSrc = nSources(initialMask)';
+% % Stage 2: remap flagged to median and recompute
+% medVal = median(dinCheck(nSources),'omitnan');
+% dinAdj = dinCheck;
+% dinAdj(dinSrc) = medVal;
+% vals2 = dinAdj(nSources);
+% z2    = zscore(vals2, 0, 'omitnan');
+% % review candidates: z2>thress & not initially flagged
+% 
+% cand2 = nSources(z2>thress & ~initialMask);
+% 
+% if ~isempty(cand2)
+%     [~, idxMax] = max(z2(ismember(nSources, cand2)));
+%     topNonDIN = cand2(idxMax);
+% else
+%     topNonDIN = [];
+% end
 
-% ---- Top non-DIN candidate via two-stage z-score
-% Stage 1: initial flags
+
+% ---- Stage 1: initial DIN flags (priority)
 initialMask = zVals > thress;
-dinSrc = nSources(initialMask)';
-% Stage 2: remap flagged to median and recompute
+
+flag1   = nSources(initialMask);
+score1  = zVals(initialMask);                 % stage-1 score
+
+% sort DIN flags by score desc
+if ~isempty(flag1)
+    [~, ord1] = sort(score1, 'descend');
+    flag1  = flag1(ord1);
+    score1 = score1(ord1);
+end
+
+MAXK = 3;
+
+% take up to MAXK DINs
+dinSrc = flag1(1:min(MAXK, numel(flag1))).';
+nRemain = MAXK - numel(dinSrc);
+
+% ---- Stage 2 only if we still have room
 medVal = median(dinCheck(nSources),'omitnan');
 dinAdj = dinCheck;
-dinAdj(dinSrc) = medVal;
+dinAdj(flag1) = medVal;
+
 vals2 = dinAdj(nSources);
 z2    = zscore(vals2, 0, 'omitnan');
-% review candidates: z2>thress & not initially flagged
 
-cand2 = nSources(z2>thress & ~initialMask);
+cand2 = [];
+topNonDIN = [];
 
-if ~isempty(cand2)
-    [~, idxMax] = max(z2(ismember(nSources, cand2)));
-    topNonDIN = cand2(idxMax);
-else
-    topNonDIN = [];
+if nRemain > 0
+    candMask = (z2 > thress) & ~initialMask;
+    cand2_all = nSources(candMask);
+    score2    = z2(candMask);                 % stage-2 score
+
+    % sort stage-2 candidates by score desc
+    if ~isempty(cand2_all)
+        [~, ord2] = sort(score2, 'descend');
+        cand2_all = cand2_all(ord2);
+        cand2 = cand2_all(1:min(nRemain, numel(cand2_all))).';  % fill remaining slots
+        topNonDIN = cand2(1);
+    end
 end
+
+
+
 % capture info
 info = struct('dinCheck',dinCheck,'z',z,'dinAdj',dinAdj,'z2',z2,'reviewCandidates',cand2,'topNonDIN',topNonDIN);
 
+
+end
+
+
+%% Legacy
 
 % % ---- Prepare plotting parameters
 % plotIdx = round(ekgStartSec*fs) + (1:round(ekgNSec*fs));
@@ -141,5 +192,3 @@ info = struct('dinCheck',dinCheck,'z',z,'dinAdj',dinAdj,'z2',z2,'reviewCandidate
 % 
 % % Re-enable warnings
 % warning('on','all');
-
-end

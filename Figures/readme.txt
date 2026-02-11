@@ -1,0 +1,1 @@
+This folder in empty. Figures will be populated here when running the file "example.m"

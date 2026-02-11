@@ -1,0 +1,16 @@
+# Ignore Mac auto files
+*.DS_Store
+
+# Ignore MATLAB autosave files
+*.asv
+
+
+# Ignore Folders
+
+Not Related/*
+
+ExampleData/*
+!ExampleData/readme.txt
+
+Figures/*
+!Figures/readme.txt

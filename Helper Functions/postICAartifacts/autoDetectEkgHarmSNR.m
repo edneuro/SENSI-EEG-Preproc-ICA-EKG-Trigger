@@ -13,7 +13,11 @@ function [ekgSrc,ekgSus, metrics] = autoDetectEkgHarmSNR(xICA, fs, nSources, opt
 %       .harmonics   = 4;      % number of harmonics to score (includes h=1)
 %       .peakHalfHz  = 0.20;   % half-width of peak window around each harmonic (Hz)
 %       .nbHalfHz    = 0.60;   % half-width of neighbor ring around each harmonic (Hz)
-%       .peakAgg     = 'sum';    % 'max' or 'sum' for peak window signal
+%       .peakAgg     = 'sum';  % 'max' or 'sum' for peak window signal
+%       .do_detrend   = 1;      % spectral flattening via log-log linear detrend (1/f removal)
+%       .detrend_fmin = .5;     % min freq for spectral flattening fitting
+%       .detrend_fmax = 30;     % max freq for spectral flattening fitting
+% 
 %
 % Outputs:
 %   ekgSrc: 
@@ -39,13 +43,19 @@ opts = fillDefault(opts, ...
     'fmin',0.8, 'fmax',2.0, ...
     'harmonics',4, ...
     'peakHalfHz',0.20, 'nbHalfHz',0.60, ...
-    'peakAgg','sum');
+    'peakAgg','sum',...)
+    'do_detrend', 1,...
+    'detrend_fmin', 0.5, ...
+    'detrend_fmax', 30);
 
 nSources = nSources(nSources>=1 & nSources<=nComp);
 
 % Welch params
 winN = max(8, round(opts.time*fs));
 ovN  = max(0, min(winN-1, round(opts.overlap*fs)));
+
+% ---- Center ICA components (remove DC per component)
+xICA = xICA - mean(xICA, 2);
 
 % ---- Compute Welch spectra
 % We'll store each component spectrum. Note: pwelch returns one-sided by default.
@@ -54,8 +64,23 @@ f = [];
 for k = 1:nComp
     x = xICA(k,:);
     [Pxx, fWelch] = pwelch(x, hann(winN), ovN, [], fs);
-    Ptmp{k} = Pxx(:);
+    
     if isempty(f), f = fWelch(:); end
+
+    % Optional: spectral flattening via log-log linear detrend (1/f removal)
+    if opts.do_detrend
+        fitIdx = (f >= opts.detrend_fmin) & (f <= opts.detrend_fmax);
+        fitIdx = fitIdx & isfinite(Pxx) & (Pxx > 0) & isfinite(f) & (f > 0);
+        if nnz(fitIdx) >= 3
+            lf = log10(f(fitIdx));
+            lp = log10(Pxx(fitIdx) + eps);
+            p = polyfit(lf, lp, 1);                 % lp ≈ p(1)*lf + p(2)
+            trend = polyval(p, log10(f + eps));     % extend to all f
+            Pxx = 10.^(log10(Pxx + eps) - trend);   % flattened spectrum (~baseline 1)
+        end
+    end
+
+    Ptmp{k} = Pxx(:);
 end
 
 nF = numel(f);
@@ -171,6 +196,19 @@ else
     ekgSus = [];
 end
 
+
+% Debuggin - Plot Strong Ones
+Nekg = length(ekgSrc);
+figure;
+for i = 1:Nekg
+    subplot(Nekg,1,i)
+    plot(f,Ptmp{ekgSrc(i)})
+    title(sprintf('Source %d', ekgSrc(i)))
+    xlabel('Freq (Hz)')
+    ylabel('Amplitude')
+    xlim([0,12])
+    sgtitle('EKG Sources - Pwelch and 1/f flattened')
+end
 
 end
 
