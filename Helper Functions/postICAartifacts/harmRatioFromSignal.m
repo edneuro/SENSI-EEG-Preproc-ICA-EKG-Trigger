@@ -1,4 +1,5 @@
 function out = harmRatioFromSignal(x, fs, opts)
+
 % harmonic_ratio_from_signal  Quantify 1 Hz harmonic energy vs inter-harmonic energy.
 %
 % Usage:
@@ -26,6 +27,7 @@ function out = harmRatioFromSignal(x, fs, opts)
 %   .mean_harm_power, .mean_middle_power
 %   .ratio_linear, .ratio_dB
 %   .f, .Sxx       % frequency vector and PSD (power/Hz) used for integration
+
 
 % -------------------- defaults --------------------
 if nargin < 3, opts = struct; end

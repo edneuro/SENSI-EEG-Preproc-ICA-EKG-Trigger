@@ -1,4 +1,5 @@
 function [dinSrc, info] = autoDetectDIN(W, xICA, badCh, fs, INFO, nSources, ekgStartSec, ekgNSec, HRFOpts)
+
 % AUTODETECTDIN
 % Detect DIN ICA components via harmRatioFromSignal + |z|>thress on the selected sources.
 % Plot DIN sources together (topo + wide time + wide spectrum), and a separate

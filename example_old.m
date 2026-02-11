@@ -34,7 +34,7 @@ disp('~ * ~ * TUTORIAL: ICA Artifact Cleaning Demonstration * ~ * ~')
 INFO.fileDir = 'D:\Stanford\Data\artifact_tutorial'; % Directory containing data files
 INFO.figDir = './Figures';                           % Output directory for saving figures
 INFO.fileName = 'example_3';                         % Base name of the input data file
-INFO.saveFigs = 1;                                        % 1 to save review figures, 0 otherwise
+saveFigs = 1;                                        % 1 to save review figures, 0 otherwise
 
 %%% Load electrode locations %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 S = load('locsEGI124.mat','locs');
@@ -47,15 +47,10 @@ HRFOpts.fmin = 10; % Minimum frequency for detection (Hz)
 HRFOpts.fmax = 50; % Maximum frequency for detection (Hz)
 HRFOpts.bw = .2;   % Half-bandwidth for frequency window (Hz)
 
-% EKG (Cardiac) Parameters (default values already loaded)
-ekgOpts.fmin = .8;             % Lower bound of cardiac rhythm band (Hz)
-ekgOpts.fmax = 2;              % Upper bound of cardiac rhythm band (Hz)
-% ekgOpts.harmonics = 4;         % Number of harmonics to include in spectral test
-% ekgOpts.peakHalfHz  = 0.20;    % half-width of peak window around each harmonic (Hz)
-% ekgOpts.nbHalfHz    = 0.60;    % half-width of neighbor ring around each harmonic (Hz)
-% ekgOpts.peakAgg     = 'sum';   % 'max' or 'sum' for peak window signal
-% ekgOpts.time        = 14;      % Welch window length (sec)
-% ekgOpts.overlap     = ekgOpts.time/2; % Welch overlap (sec)
+% EKG (Cardiac) Parameters
+ekgOpts.fmin = .8; % Lower bound of cardiac rhythm band (Hz)
+ekgOpts.fmax = 2;  % Upper bound of cardiac rhythm band (Hz)
+ekgOpts.harmonics = 4; % Number of harmonics to include in spectral test
 
 %%% DATA ASSESSMENT THRESHOLDS (Used in the final QC plot) %%%%%%%%%%%%%%%%
 INFO.recUVThresh = 50;  % uV magnitude threshold for a 'bad' sample
@@ -84,7 +79,6 @@ end
 % The data must be transformed from sensor space (xRaw) into the ICA
 % component space (xICA) using the unmixing matrix (W).
 % For this tutorial, we will load a pre-computed W matrix for speed.
-% (This script will run ICA if the W matrix is not provided)
 % -------------------------------------------------------------------------
 
 wPath = fullfile(INFO.fileDir, [INFO.fileName '_W.mat']);
@@ -129,7 +123,7 @@ disp('-> Data transformed to ICA space (xICA).')
 % 7 - Click **'Done'** in each UI to submit your final selections and proceed to the next step.
 
 % [OPTIONAL] Adjusting the Time Window:
-% 8 - The time-domain plots show a 10-second segment starting at 'tempStartSec' 
+% 8 - The time-domain plots show a 10-second segment starting at `tempStartSec` 
 %     (default 5 minutes, or 5*60 seconds). In rare cases where an artifact is 
 %     ambiguous (e.g., EKG-like), you may visualize a different segment of data 
 %     by adjusting the value of **`tempStartSec`** in the preliminary variables 
@@ -152,7 +146,7 @@ tempNSec = 10;         % Duration of the time-series plots
 % Interactive review of DIN candidates
 dinSrc = reviewDINArtifactUI(W, xICA, fs, chanlocs, dinSrc, tempDinInfo.reviewCandidates, ...
    tempStartSec, tempNSec, [INFO.fileName '_DIN'], ...
-   INFO.saveFigs, INFO.figDir);
+   saveFigs, INFO.figDir);
 
 if isempty(dinSrc); fprintf('\n\tNo DIN artifact detected\n')
 else; fprintf('\n\tdinSrc = %s\n', mat2str(dinSrc));
@@ -160,14 +154,33 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%% EKG Detection %%%%%%%%%%%%%%%%%%%%%%%%%
-% SNR Harmonic Test (detecting beats via spectral analysis)
-[ekgSrc, ekgSus, ~] = autoDetectEkgHarmSNR(xICA, fs, ...
-    tempNSources, ekgOpts);
+% 1) KG Harmonics Test (detecting beats via spectral analysis)
+[tempEkgHarmScore, tempMetrics] = autoDetectEkgHarm(xICA(tempNSources,:), ...
+    fs, tempNSources, ekgOpts);
 
-% EKG UI - Interactive review of flagged and suspected sources
-ekgSrc = reviewEkgArtifactUI(W, xICA, fs, chanlocs, ekgSrc, ekgSus, ...
+% 2) ICA Topography Test (EKG like topography)
+tempEkgTopoScore = autoDetectEkgTopo(W, chanlocs, tempNSources, 0);
+tempEkgTopoScore = zscore(tempEkgTopoScore.');
+
+% 3) SNR Harmonic Test
+[tempEkgHarmSnrScore, tempMetrics2] = autoDetectEkgHarmSNR(xICA, fs, tempNSources, []);
+
+% 3) Combining Detection Metrics
+% Create a binary mask for "likely EKG" sources (high score on both metrics)
+tempNoEkg = (tempEkgHarmScore > 2.5) .* (tempEkgTopoScore > 1.5);
+% Simple average of Z-scores to get a composite EKG artifact score
+tempEkgScore = (tempEkgHarmScore + tempEkgTopoScore)/2;
+% Zero out scores for components that didn't meet the initial "likely EKG" threshold
+tempEkgScore(~tempNoEkg) = 0;
+% Final list of automatically flagged EKG sources (high combined score)
+ekgSrc = tempNSources(tempEkgScore > 2.5);
+% List of suspected EKG sources that were below the final threshold but above suspicion (for review)
+tempEkgSus = tempNSources((tempEkgScore > 1.96) & ~ekgSrc);
+
+% 4) EKG UI - Interactive review of flagged and suspected sources
+ekgSrc = reviewEkgArtifactUI(W, xICA, fs, chanlocs, ekgSrc, tempEkgSus, ...
    tempStartSec, tempNSec, [INFO.fileName '_EKG'],...
-   INFO.saveFigs, INFO.figDir);
+   saveFigs, INFO.figDir);
 
 if isempty(ekgSrc); fprintf('\n\tNo EKG artifact detected\n')
 else; fprintf('\n\tekgSrc = %s\n', mat2str(ekgSrc));
@@ -188,7 +201,7 @@ tempOtherSrc = setdiff((1:10).',[ekgSrc(:); dinSrc(:)]);
 % Use the updated, save-enabled UI for review. Note: This UI starts components 
 % flagged for KEEP (green), as rejection here should be rare.
 otherSrc = reviewOtherUI(W, xICA, fs, chanlocs, otherSrc, tempOtherSrc, ...
-    [INFO.fileName '_Other'], INFO.saveFigs, INFO.figDir); % Figure 6
+    [INFO.fileName '_Other'], saveFigs, INFO.figDir); % Figure 6
 
 clear temp*
 
