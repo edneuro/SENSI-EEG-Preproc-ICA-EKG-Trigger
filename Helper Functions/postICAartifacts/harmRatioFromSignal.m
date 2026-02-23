@@ -19,7 +19,7 @@ function out = harmRatioFromSignal(x, fs, opts)
 %          .fmax   = 50;          % analysis band high (Hz)
 %
 %          % Band definitions (choose either absolute Hz or fractional-of-f0):
-%          .bw     = [];          % half-bandwidth around centers (Hz). 
+%          .bw     = [];          % half-bandwidth around centers (Hz). Can be left empty - value calculated inside function.
 %          .guard  = [];          % exclude this half-width near harmonics for "middle" bands (Hz). 
 %          .bwFrac    = 0.15;     % bw = bwFrac*f0 (used when bw is empty)
 %          .guardFrac = 0.08;     % guard = guardFrac*f0 (used when guard is empty)

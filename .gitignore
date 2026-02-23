@@ -4,6 +4,8 @@
 # Ignore MATLAB autosave files
 *.asv
 
+# Local MATLAB path config (machine-specific)
+currentPath.m
 
 # Ignore Folders
 

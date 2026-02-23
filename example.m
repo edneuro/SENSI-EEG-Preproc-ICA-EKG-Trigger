@@ -33,7 +33,7 @@ disp('~ * ~ * TUTORIAL: ICA Artifact Cleaning Demonstration * ~ * ~')
 %%% FILE AND PATH CONFIGURATION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 INFO.fileDir = 'D:\Stanford\Data\artifact_tutorial'; % Directory containing data files
 INFO.figDir = './Figures';                           % Output directory for saving figures
-INFO.fileName = 'example_2';                         % Base name of the input data file
+INFO.fileName = 'example_3';                         % Base name of the input data file
 INFO.saveFigs = 1;                                        % 1 to save review figures, 0 otherwise
 
 %%% Load electrode locations %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -46,7 +46,7 @@ S = load('locsEGI124.mat','locs');
 dinOpts.T = 1;     % Din repetition period in seconds. Default: 1 sec
 dinOpts.fmin = 10; % Minimum frequency for detection (Hz)
 dinOpts.fmax = 50; % Maximum frequency for detection (Hz)
-dinOpts.bw = .2;   % Half-bandwidth for frequency window (Hz)
+% dinOpts.bw = .2; % half-bandwidth around centers (Hz). Can be left empty - value calculated inside function.
 
 % EKG (Cardiac) Parameters (default values already loaded)
 ekgOpts.fmin = .8;             % Lower bound of cardiac rhythm band (Hz)
