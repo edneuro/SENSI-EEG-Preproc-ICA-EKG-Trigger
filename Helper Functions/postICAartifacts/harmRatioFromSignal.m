@@ -20,7 +20,7 @@ function out = harmRatioFromSignal(x, fs, opts)
 %
 %          % Band definitions (choose either absolute Hz or fractional-of-f0):
 %          .bw     = [];          % half-bandwidth around centers (Hz). Can be left empty - value calculated inside function.
-%          .guard  = [];          % exclude this half-width near harmonics for "middle" bands (Hz). 
+%          .guard  = [];          % exclude this half-width near harmonics for "middle" bands (Hz). Can be left empty - value calculated inside function.
 %          .bwFrac    = 0.15;     % bw = bwFrac*f0 (used when bw is empty)
 %          .guardFrac = 0.08;     % guard = guardFrac*f0 (used when guard is empty)
 %          .minBW  = 0.05;        % clamp for scaled bw (Hz)
@@ -104,7 +104,7 @@ switch lower(opts.method)
         else
              nfft = max(opts.nfft, opts.segLen);
         end
-        % Note: pwelch detrends internally based on its default behavior; keeping your original call.
+        % pwelch
         [Sxx, f] = pwelch(x, win, nover, nfft, fs, 'onesided'); % power/Hz
 
     case 'pmtm'

@@ -10,6 +10,7 @@ currentPath.m
 # Ignore Folders
 
 Not Related/*
+Legacy/*
 
 ExampleData/*
 !ExampleData/readme.txt

@@ -31,13 +31,18 @@ clear; close all; clc
 disp('~ * ~ * TUTORIAL: ICA Artifact Cleaning Demonstration * ~ * ~')
 
 %%% FILE AND PATH CONFIGURATION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-INFO.fileDir = 'D:\Stanford\Data\artifact_tutorial'; % Directory containing data files
-INFO.figDir = './Figures';                           % Output directory for saving figures
-INFO.fileName = 'example_3';                         % Base name of the input data file
-INFO.saveFigs = 1;                                        % 1 to save review figures, 0 otherwise
+dataFolder = 'ExampleData\';  % Directory containing data files
+INFO.figDir = 'Figures\';      % Output directory for saving figures
+INFO.saveFigs = 1;              % 1 to save review figures, 0 otherwise
 
-%%% Load electrode locations %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-S = load('locsEGI124.mat','locs');
+% Choose one example file: (data will be downloaded in block 2)
+%   'data1' : Example dataset 1
+%   'data2' : Example dataset 2
+%   'data3' : Example dataset 3
+fileName = 'data2'; % <-- EDIT THIS. Base name of the input data file
+
+%%% Electrode locations file %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+locfile = 'EGI-9_18-124.sfp'; % name of electrode locations file
 
 %%% ARTIFACT DETECTION PARAMETERS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % These thresholds control the automated component flagging process.
@@ -46,7 +51,6 @@ S = load('locsEGI124.mat','locs');
 dinOpts.T = 1;     % Din repetition period in seconds. Default: 1 sec
 dinOpts.fmin = 10; % Minimum frequency for detection (Hz)
 dinOpts.fmax = 50; % Maximum frequency for detection (Hz)
-% dinOpts.bw = .2; % half-bandwidth around centers (Hz). Can be left empty - value calculated inside function.
 
 % EKG (Cardiac) Parameters (default values already loaded)
 ekgOpts.fmin = .8;             % Lower bound of cardiac rhythm band (Hz)
@@ -54,22 +58,21 @@ ekgOpts.fmax = 2;              % Upper bound of cardiac rhythm band (Hz)
 % ekgOpts.harmonics = 4;         % Number of harmonics to include in spectral test
 % ekgOpts.peakHalfHz  = 0.20;    % half-width of peak window around each harmonic (Hz)
 % ekgOpts.nbHalfHz    = 0.60;    % half-width of neighbor ring around each harmonic (Hz)
-% ekgOpts.peakAgg     = 'sum';   % 'max' or 'sum' for peak window signal
 % ekgOpts.time        = 14;      % Welch window length (sec)
-% ekgOpts.overlap     = ekgOpts.time/2; % Welch overlap (sec)
 
-%%% DATA ASSESSMENT THRESHOLDS (Used in the final QC plot) %%%%%%%%%%%%%%%%
+%%% (Optional) DATA ASSESSMENT THRESHOLDS (Used in the final QC plot) %%%%%%%%%%%%%%%%
 INFO.recUVThresh = 50;  % uV magnitude threshold for a 'bad' sample
 INFO.recPctThresh = 15; % % of 'bad' samples required to flag a channel as 'recording bad'
 
 
 %% 2. LOAD DATA AND PREPARE LOCATIONS
 
-% Load the raw data file. This file must contain the variables:
-load([INFO.fileDir filesep INFO.fileName]) 
+% Load the raw data file. If file does not exist, then it will be downloaded to dataFolder.
+getExampleData_ekgdin(dataFolder); % Downloading example data to desired folder
+load([dataFolder filesep fileName])  
 
-% Initialize the main channel location variable (chanlocs) from the structure.
-chanlocs = S.locs; 
+% Load electrode locations. This file must contain the variables:
+chanlocs = chanlocsFromFile(locfile);
 
 % Remove the locations corresponding to the channels previously identified as bad.
 if ~exist('badCh','var') % Ensuring badCh exists
@@ -88,7 +91,7 @@ end
 % (This script will run ICA if the W matrix is not provided)
 % -------------------------------------------------------------------------
 
-wPath = fullfile(INFO.fileDir, [INFO.fileName '_W.mat']);
+wPath = fullfile(dataFolder, [fileName '_W.mat']);
 try
     load(wPath, 'W');    % Tries to load precomputed W matrix
 catch
@@ -151,7 +154,7 @@ tempNSec = 10;         % Duration of the time-series plots
 
 % Interactive review of DIN candidates
 dinSrc = reviewDINArtifactUI(W, xICA, fs, chanlocs, dinSrc, tempDinInfo.reviewCandidates, ...
-   tempStartSec, tempNSec, [INFO.fileName '_DIN'], ...
+   tempStartSec, tempNSec, [fileName '_DIN'], ...
    INFO.saveFigs, INFO.figDir);
 
 if isempty(dinSrc); fprintf('\n\tNo DIN artifact detected\n')
@@ -161,11 +164,11 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%% EKG Detection %%%%%%%%%%%%%%%%%%%%%%%%%
 % SNR Harmonic Test (detecting beats via spectral analysis)
-[ekgSrc, ekgSus, ~] = autoDetectEkgHarmSNR(xICA, fs, tempNSources, ekgOpts);
+[ekgSrc, ekgSus, ~] = autoDetectEkg(xICA, fs, tempNSources, ekgOpts);
 
 % EKG UI - Interactive review of flagged and suspected sources
 ekgSrc = reviewEkgArtifactUI(W, xICA, fs, chanlocs, ekgSrc, ekgSus, ...
-   tempStartSec, tempNSec, [INFO.fileName '_EKG'],...
+   tempStartSec, tempNSec, [fileName '_EKG'],...
    INFO.saveFigs, INFO.figDir);
 
 if isempty(ekgSrc); fprintf('\n\tNo EKG artifact detected\n')
@@ -187,7 +190,7 @@ tempOtherSrc = setdiff((1:10).',[ekgSrc(:); dinSrc(:)]);
 % Use the updated, save-enabled UI for review. Note: This UI starts components 
 % flagged for KEEP (green), as rejection here should be rare.
 otherSrc = reviewOtherUI(W, xICA, fs, chanlocs, otherSrc, tempOtherSrc, ...
-    [INFO.fileName '_Other'], INFO.saveFigs, INFO.figDir); % Figure 6
+    [fileName '_Other'], INFO.saveFigs, INFO.figDir); % Figure 6
 
 clear temp*
 
@@ -227,7 +230,7 @@ tempX124_after = fillBadChRows(xCl, badCh);
 
 % --- Plotting: Time Series and Data Image ---
 figure()
-sgtitle([INFO.fileName ' : Before and After ICA Cleaning'], 'interpreter', 'none')
+sgtitle([fileName ' : Before and After ICA Cleaning'], 'interpreter', 'none')
 
 % Left Column: Before ICA (xRaw)
 subplot(4, 2, 1); plotEEGOverlay(tempX124_before, []); title('Before ICA, Overlay');
@@ -254,4 +257,7 @@ if any(tempRecOverUVThresh >= INFO.recPctThresh)
 else
     disp('- * Post-ICA QC check complete: No recording bad channels! * -')
 end
+
+% Output Matrix (xCl with Bad channels interpolated across neighbors)
+xOut = tempX124_after; 
 clear temp*

@@ -129,7 +129,7 @@ return;
             
             % (1) Topoplot (Tile 1)
             ax1 = nexttile(T, (r-1)*4 + 1); % Index: 1
-            topoplotStandalone(Wi(:,comp), chanlocs);
+            topoplot_new(Wi(:,comp), chanlocs);
             title(ax1, sprintf('IC %d', comp), 'Interpreter','none');
             axis(ax1, 'off');
             hold(ax1,'on');
@@ -200,7 +200,7 @@ return;
                 savePath = fullfile(folder, fileName);
                 
                 % Save figure (saving as PNG is robust for UI)
-                saveas(figh, savePath, 'png');
+                exportgraphics(figh, savePath, 'Resolution', 300);
             catch ME
                 warning('ReviewOTHERUI:SaveError', 'Could not save figure page %d: %s', p, ME.message);
             end
