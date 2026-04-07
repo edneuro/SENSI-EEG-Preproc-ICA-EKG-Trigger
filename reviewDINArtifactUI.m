@@ -1,20 +1,67 @@
 function dinSrcFinal = reviewDINArtifactUI(W, xICA, fs, chanlocs, dinSrc, candidates, StartSec, NSec, figName, saveFigs, saveFolder)
-% reviewDINArtifactUI
-% Interactive DIN artifact reviewer with TILEDLAYOUT and color toggling.
-% **NOW INCLUDES OPTIONAL FIGURE SAVING**
-% Layout per row (7 tiles): [1] Topoplot | [2-4] Time (windowed) | [5-7] |FFT| (same window)
-% Click anywhere in a row to toggle membership: DIN (red) <-> candidate (green).
-% Auto-centers and clamps figure position to stay on-screen.
+% REVIEWDINARTIFACTUI  Interactive review UI for DIN (trigger) artifact ICA components.
 %
-% Inputs (New Inputs Bolded):
-%   W, xICA, fs, chanlocs : as in your pipeline
-%   dinSrc      : components pre-flagged for REJECT (start red)
-%   candidates  : components to review (start green)
-%   StartSec    : start time (s) for the time window
-%   NSec        : window length (s) for time plot
-%   figName     : title in control bar
-%   saveFigs    : (Optional) Boolean flag (0 or 1). If 1, figure is saved. Defaults to 0.
-%   saveFolder  : (Optional) Path to the saving folder. Defaults to pwd.
+%   DINSRCFINAL = REVIEWDINARTIFACTUI(W, XICA, FS, CHANLOCS, DINSRC,
+%                   CANDIDATES, STARTSEC, NSEC, FIGNAME, SAVEFIGS, SAVEFOLDER)
+%
+%   Opens a MATLAB figure displaying each candidate component as a row of 7
+%   tiles: topoplot | time-series window | full-recording |FFT|. Components
+%   in DINSRC start flagged red (REJECT); components in CANDIDATES start
+%   green (KEEP). Click anywhere in a row to toggle its status. Click "Done"
+%   to finalize and return the list of rejected components.
+%
+%   INPUTS
+%     W           [nCh x nComp] ICA unmixing matrix
+%     xICA        [nComp x nSamp] ICA component time series
+%     fs          Scalar sampling rate (Hz)
+%     chanlocs    Electrode location struct (from chanlocsFromFile)
+%     dinSrc      Vector of component indices pre-flagged for REJECT (red)
+%     candidates  Vector of component indices to review (green)
+%     StartSec    Start time (sec) for the time-series plot window
+%     NSec        Duration (sec) of the time-series plot window
+%     figName     String used as figure title and output filename base
+%     saveFigs    (Optional) 1 = save figure on Done, 0 = no save (default 0)
+%     saveFolder  (Optional) Output folder for saved figure (default: pwd)
+%
+%   OUTPUTS
+%     dinSrcFinal  Vector of component indices confirmed as DIN artifacts
+%
+%   NOTES
+%     • If both dinSrc and candidates are empty, returns [] immediately.
+%     • Figure is saved as a PNG at 300 DPI when saveFigs=1 and Done is clicked.
+%     • The frequency plot uses the full IC time series (not just the window).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Reference (please cite):
+%
+% Module Citation:
+% Malave, A. J., & Kaneshiro, B. (2026). SENSI-EEG-Preproc-ICA-EKG-Trigger:
+% A MATLAB framework for semi-automated identification of EKG and trigger
+% artifacts in EEG using ICA and spectral characteristics. Stanford University.
+% https://github.com/edneuro/SENSI-EEG-Preproc-ICA-EKG-Trigger
+%
+% MIT License
+%
+% Copyright (c) 2026 Amilcar J. Malave, and Blair Kaneshiro.
+%
+% Permission is hereby granted, free of charge, to any person obtaining a
+% copy of this software and associated documentation files (the "Software"),
+% to deal in the Software without restriction, including without limitation
+% the rights to use, copy, modify, merge, publish, distribute, sublicense,
+% and/or sell copies of the Software, and to permit persons to whom the
+% Software is furnished to do so, subject to the following conditions:
+%
+% The above copyright notice and this permission notice shall be included in
+% all copies or substantial portions of the Software.
+%
+% THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+% OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+% FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+% THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+% LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+% FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+% DEALINGS IN THE SOFTWARE.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % -------- Input Argument Handling for New Inputs --------
 if nargin < 11 || isempty(saveFolder), saveFolder = pwd; end
@@ -176,7 +223,9 @@ function saveCurrentFigurePage(figh, folder, name)
 end
 % -------- utilities --------
 function centerAndClamp(fig)
-% Center the figure on the *current* monitor and clamp it fully on-screen.
+% CENTERANDCLAMP  Center the figure on the current monitor and clamp it
+%   fully on-screen. On multi-monitor setups, targets the monitor with the
+%   greatest overlap with the current figure position.
     if ~ishghandle(fig), return; end
     oldUnits = get(fig,'Units');
     set(fig,'Units','pixels');
@@ -195,7 +244,8 @@ function centerAndClamp(fig)
     set(fig,'Units', oldUnits);
 end
 function a = overlapArea(aPos, bPos)
-% Return overlap area between rect A and B (both [x y w h]).
+% OVERLAPAREA  Return the pixel overlap area between two rectangles.
+%   aPos, bPos : [x y w h] in pixels.
     ax1=aPos(1); ay1=aPos(2); ax2=ax1+aPos(3); ay2=ay1+aPos(4);
     bx1=bPos(1); by1=bPos(2); bx2=bx1+bPos(3); by2=by1+bPos(4);
     iw = max(0, min(ax2,bx2) - max(ax1,bx1));
@@ -203,5 +253,6 @@ function a = overlapArea(aPos, bPos)
     a = iw*ih;
 end
 function out = tern(cond, a, b)
+% TERN  Inline ternary: returns A if COND is true, B otherwise.
 if cond, out = a; else, out = b; end
 end

@@ -17,7 +17,6 @@
 % 3. MATLAB TOOLBOXES (EXTERNAL LIBRARIES):
 %    - Signal Processing Toolbox
 %    - Statistics and Machine Learning Toolbox
-%    - Image Processing Toolbox
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -39,7 +38,7 @@ INFO.saveFigs = 1;              % 1 to save review figures, 0 otherwise
 %   'data1' : Example dataset 1
 %   'data2' : Example dataset 2
 %   'data3' : Example dataset 3
-fileName = 'data3'; % <-- EDIT THIS. Base name of the input data file
+fileName = 'data1'; % <-- EDIT THIS. Base name of the input data file
 
 %%% Electrode locations file %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 locfile = 'EGI-9_18-124.sfp'; % name of electrode locations file

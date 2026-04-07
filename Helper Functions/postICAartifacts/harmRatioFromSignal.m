@@ -43,6 +43,38 @@ function out = harmRatioFromSignal(x, fs, opts)
 %   .f, .Sxx       % frequency vector and PSD (power/Hz) used for integration
 %   .bw, .guard    % actual values used (Hz)
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Reference (please cite):
+%
+% Module Citation:
+% Malave, A. J., & Kaneshiro, B. (2026). SENSI-EEG-Preproc-ICA-EKG-Trigger:
+% A MATLAB framework for semi-automated identification of EKG and trigger
+% artifacts in EEG using ICA and spectral characteristics. Stanford University.
+% https://github.com/edneuro/SENSI-EEG-Preproc-ICA-EKG-Trigger
+%
+% MIT License
+%
+% Copyright (c) 2026 Amilcar J. Malave, and Blair Kaneshiro.
+%
+% Permission is hereby granted, free of charge, to any person obtaining a
+% copy of this software and associated documentation files (the "Software"),
+% to deal in the Software without restriction, including without limitation
+% the rights to use, copy, modify, merge, publish, distribute, sublicense,
+% and/or sell copies of the Software, and to permit persons to whom the
+% Software is furnished to do so, subject to the following conditions:
+%
+% The above copyright notice and this permission notice shall be included in
+% all copies or substantial portions of the Software.
+%
+% THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+% OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+% FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+% THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+% LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+% FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+% DEALINGS IN THE SOFTWARE.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 % -------------------- defaults --------------------
 if nargin < 3, opts = struct; end
 defaults = struct( ...
@@ -229,7 +261,9 @@ end
 end
 
 % ---------- helpers ----------
-function P = integrate_band(f,Sxx,fL,fH)
+function P = integrate_band(f, Sxx, fL, fH)
+% INTEGRATE_BAND  Integrate PSD over [fL, fH] using the trapezoidal rule.
+%   Returns NaN if fewer than 2 frequency bins fall within the band.
     idx = (f >= fL) & (f <= fH);
     if nnz(idx) < 2
         P = NaN;
@@ -239,6 +273,8 @@ function P = integrate_band(f,Sxx,fL,fH)
 end
 
 function o = filldefaults(o, d)
+% FILLDEFAULTS  Copy fields from default struct D into O for any fields
+%   that are missing or empty in O.
     f = fieldnames(d);
     for k=1:numel(f)
         if ~isfield(o,f{k}) || isempty(o.(f{k}))

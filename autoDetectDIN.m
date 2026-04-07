@@ -1,18 +1,96 @@
 function [dinSrc, info] = autoDetectDIN(xICA, fs, nSources, Opts)
-
-% AUTODETECTDIN
-% Detect DIN ICA components via harmRatioFromSignal + |z|>thress on the selected sources.
-% Plot DIN sources together (topo + wide time + wide spectrum), and a separate
-% figure for the single strongest non-DIN candidate for review.
+% AUTODETECTDIN  Detect DIN (trigger) artifact ICA components via harmonic
+%                energy ratio and z-score ranking.
 %
-% Usage:
-%   [dinSrc, info] = autoDetectDIN(W, xICA, badCh, fs, INFO, nSources, ekgStartSec, ekgNSec, Opts)
+%   [DINSRC, INFO] = AUTODETECTDIN(XICA, FS, NSOURCES, OPTS)
+%
+%   Identifies ICA components that exhibit the comb-like harmonic structure
+%   characteristic of periodic digital-input (DIN/trigger) artifacts. For
+%   each component, a harmonic energy ratio is computed via
+%   harmRatioFromSignal. Components are z-scored across nSources and flagged
+%   in two stages: high-confidence DIN (|z| > thress) are flagged first,
+%   then a second z-score pass (with flagged components replaced by the
+%   median) identifies additional borderline candidates to present for review.
+%
+%   INPUTS
+%     xICA      [nComp x nSamp] ICA component time series
+%     fs        Scalar sampling rate (Hz)
+%     nSources  Vector of component indices to scan (default: 1:30)
+%     Opts      Struct with optional fields (defaults shown):
+%       .T      1      DIN repetition period (sec); sets fundamental freq
+%       .fmin   10     Lower bound of DIN detection band (Hz)
+%       .fmax   50     Upper bound of DIN detection band (Hz)
+%       .bw     0.2    Bandwidth parameter passed to harmRatioFromSignal
+%
+%   OUTPUTS
+%     dinSrc    Row vector of component indices flagged as DIN artifacts
+%               (up to MAXK=3 components, ranked by z-score)
+%     info      Struct with fields:
+%       .dinCheck         [nComp x 1] raw harmonic ratio per component (NaN for unscanned)
+%       .z                [nComp x 1] stage-1 z-scores (NaN for unscanned)
+%       .dinAdj           [nComp x 1] dinCheck with flagged components replaced by median
+%       .z2               [nComp x 1] stage-2 z-scores after median replacement
+%       .reviewCandidates Vector of stage-2 candidates (for interactive review)
+%       .topNonDIN        Highest-ranked stage-2 candidate (or [] if none)
+%
+%   METHOD
+%     1) harmRatioFromSignal computes the ratio of harmonic energy to
+%        background energy in the DIN band for each component in nSources.
+%     2) Stage-1: z-score across nSources; components with z > thress (=2.5)
+%        flagged. Top MAXK (=3) by score selected as dinSrc.
+%     3) Stage-2: flagged components replaced by median, z-scores recomputed.
+%        Additional candidates with z2 > thress (not already flagged) are
+%        collected as reviewCandidates for the interactive review UI.
+%
+%   DEPENDENCIES
+%     harmRatioFromSignal
+%
+%   NOTES
+%     • thress=2.5 and MAXK=3 are empirical defaults; most recordings have
+%       0–1 DIN component; MAXK=3 accommodates unusual cases.
+%     • Components not in nSources receive NaN in all output score fields.
+%     • If no valid sources exist, dinSrc=[] and a warning is issued.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Reference (please cite):
+%
+% Module Citation:
+% Malave, A. J., & Kaneshiro, B. (2026). SENSI-EEG-Preproc-ICA-EKG-Trigger:
+% A MATLAB framework for semi-automated identification of EKG and trigger
+% artifacts in EEG using ICA and spectral characteristics. Stanford University.
+% https://github.com/edneuro/SENSI-EEG-Preproc-ICA-EKG-Trigger
+%
+% MIT License
+%
+% Copyright (c) 2026 Amilcar J. Malave, and Blair Kaneshiro.
+%
+% Permission is hereby granted, free of charge, to any person obtaining a
+% copy of this software and associated documentation files (the "Software"),
+% to deal in the Software without restriction, including without limitation
+% the rights to use, copy, modify, merge, publish, distribute, sublicense,
+% and/or sell copies of the Software, and to permit persons to whom the
+% Software is furnished to do so, subject to the following conditions:
+%
+% The above copyright notice and this permission notice shall be included in
+% all copies or substantial portions of the Software.
+%
+% THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+% OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+% FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+% THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+% LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+% FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+% DEALINGS IN THE SOFTWARE.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % ---- Defaults
 if nargin < 3 || isempty(nSources),    nSources    = 1:30; end
 if nargin < 4 || isempty(Opts),        Opts     = struct('fmin',10,'fmax',50,'bw',0.2); end
 
+% z-score threshold for flagging DIN components (empirical)
 thress = 2.5;
+% Maximum number of DIN components to flag across both stages
+MAXK = 3;
 
 % ---- Shapes / guards
 [nComp, nSamp] = size(xICA);
@@ -25,66 +103,36 @@ if isempty(nSources)
     return;
 end
 
-% ---- Compute DIN metric
+% ---- Compute DIN metric (harmonic energy ratio per component)
 dinCheck = nan(nComp,1);
 for k = nSources
     out = harmRatioFromSignal(xICA(k,:), fs, Opts);
     dinCheck(k) = out.ratio_linear;
 end
 
-% ---- Z-score over selected sources
+% ---- Stage-1: z-score over selected sources and flag high-confidence DIN
 vals  = dinCheck(nSources);
-zVals = zscore(vals, 0, 'omitnan');  
+zVals = zscore(vals, 0, 'omitnan');
 
 z = nan(nComp,1);
 z(nSources) = zVals;
 
-% % ---- Flag DIN components
-% dinSrc = nSources(zVals > thress);
-% dinSrc = dinSrc(:).';
-% 
-% % ---- Top non-DIN candidate via two-stage z-score
-% % Stage 1: initial flags
-% initialMask = zVals > thress;
-% dinSrc = nSources(initialMask)';
-% % Stage 2: remap flagged to median and recompute
-% medVal = median(dinCheck(nSources),'omitnan');
-% dinAdj = dinCheck;
-% dinAdj(dinSrc) = medVal;
-% vals2 = dinAdj(nSources);
-% z2    = zscore(vals2, 0, 'omitnan');
-% % review candidates: z2>thress & not initially flagged
-% 
-% cand2 = nSources(z2>thress & ~initialMask);
-% 
-% if ~isempty(cand2)
-%     [~, idxMax] = max(z2(ismember(nSources, cand2)));
-%     topNonDIN = cand2(idxMax);
-% else
-%     topNonDIN = [];
-% end
-
-
-% ---- Stage 1: initial DIN flags (priority)
 initialMask = zVals > thress;
-
 flag1   = nSources(initialMask);
-score1  = zVals(initialMask);                 % stage-1 score
+score1  = zVals(initialMask);
 
-% sort DIN flags by score desc
+% Sort stage-1 flags by score descending
 if ~isempty(flag1)
     [~, ord1] = sort(score1, 'descend');
     flag1  = flag1(ord1);
-    score1 = score1(ord1);
 end
 
-MAXK = 3;
+% Take up to MAXK confirmed DIN components
+dinSrc   = flag1(1:min(MAXK, numel(flag1))).';
+nRemain  = MAXK - numel(dinSrc);
 
-% take up to MAXK DINs
-dinSrc = flag1(1:min(MAXK, numel(flag1))).';
-nRemain = MAXK - numel(dinSrc);
-
-% ---- Stage 2 only if we still have room
+% ---- Stage-2: replace flagged values with median and re-score remaining
+% This exposes borderline candidates that were masked by the strong DIN components.
 medVal = median(dinCheck(nSources),'omitnan');
 dinAdj = dinCheck;
 dinAdj(flag1) = medVal;
@@ -92,103 +140,25 @@ dinAdj(flag1) = medVal;
 vals2 = dinAdj(nSources);
 z2    = zscore(vals2, 0, 'omitnan');
 
-cand2 = [];
+cand2     = [];
 topNonDIN = [];
 
 if nRemain > 0
-    candMask = (z2 > thress) & ~initialMask;
+    candMask  = (z2 > thress) & ~initialMask;
     cand2_all = nSources(candMask);
-    score2    = z2(candMask);                 % stage-2 score
+    score2    = z2(candMask);
 
-    % sort stage-2 candidates by score desc
+    % Sort stage-2 candidates by score descending
     if ~isempty(cand2_all)
         [~, ord2] = sort(score2, 'descend');
         cand2_all = cand2_all(ord2);
-        cand2 = cand2_all(1:min(nRemain, numel(cand2_all))).';  % fill remaining slots
+        cand2     = cand2_all(1:min(nRemain, numel(cand2_all))).';
         topNonDIN = cand2(1);
     end
 end
 
-
-
-% capture info
-info = struct('dinCheck',dinCheck,'z',z,'dinAdj',dinAdj,'z2',z2,'reviewCandidates',cand2,'topNonDIN',topNonDIN);
-
+% ---- Package output info struct
+info = struct('dinCheck',dinCheck,'z',z,'dinAdj',dinAdj,'z2',z2, ...
+              'reviewCandidates',cand2,'topNonDIN',topNonDIN);
 
 end
-
-
-%% Legacy
-
-% % ---- Prepare plotting parameters
-% plotIdx = round(ekgStartSec*fs) + (1:round(ekgNSec*fs));
-% plotIdx = plotIdx(plotIdx>=1 & plotIdx<=nSamp);
-% maxFreq = 50;
-% 
-% % ---- Load and adjust locations
-% load('locsEGI124.mat','locs');
-% goodBad = badCh(badCh>=1 & badCh<=numel(locs));
-% locsAdj = locs;
-% locsAdj(goodBad) = [];
-% Wi = inv(W);
-% 
-% % ---- Plot DIN sources
-% % Suppress layout position warnings under tiledlayout
-% warning('off','all');
-% if ~isempty(dinSrc)
-%     nRow = numel(dinSrc);
-%     fig = figure('Name','DIN flagged','Color','w','Units','pixels');
-%     fig.Position(3) = 900;
-%     fig.Position(4) = nRow*125 + 50;
-%     T = tiledlayout(nRow, 7, 'TileSpacing','compact','Padding','compact');
-%     for r = 1:nRow
-%         src = dinSrc(r);
-%         % Topo (col 1)
-%         nexttile(T, (r-1)*7 + 1, [1 1]);
-%         topoplotStandalone(Wi(:,src), locsAdj);
-%         title(sprintf('Source %d', src), 'Interpreter','none');
-%         % Time (cols 2–4)
-%         nexttile(T, (r-1)*7 + 2, [1 3]);
-%         plot(plotIdx/fs, xICA(src,plotIdx), 'LineWidth',1); grid on;
-%         xlabel('Time (s)'); ylabel('Amplitude');
-%         title('Time Domain','Interpreter','none');
-%         % Freq (cols 5–7)
-%         nexttile(T, (r-1)*7 + 5, [1 3]);
-%         data = xICA(src,:);
-%         fAx  = computeFFTFrequencyAxis(length(data), fs);
-%         plot(fAx, abs(fft(data)), 'LineWidth',1); grid on;
-%         xlim([0 maxFreq]); xlabel('Freq (Hz)');
-%         title('Frequency Domain','Interpreter','none');
-%     end
-%     fn   = INFO.preproc4_MIR_fNameLoaded;
-%     base = fn(1:end-4);
-%     sgtitle(T, sprintf('%s: DIN flagged [%s]', base, mat2str(dinSrc')), 'Interpreter','none');
-% end
-% 
-% % ---- Plot review candidate
-% % Suppress warnings again for review figure
-% warning('off','MATLAB:layout:UnableToSetPosition');
-% if ~isempty(topNonDIN)
-%     fig = figure('Name','Review (not DIN)','Color','w','Units','pixels');
-%     fig.Position(3) = 900;
-%     fig.Position(4) = 125 + 50;
-%     T2 = tiledlayout(1, 7, 'TileSpacing','compact','Padding','compact');
-%     src = topNonDIN;
-%     nexttile(T2, 1, [1 1]);
-%     topoplotStandalone(Wi(:,src), locsAdj);
-%     title(sprintf('Source %d', src), 'Interpreter','none');
-%     nexttile(T2, 2, [1 3]);
-%     plot(plotIdx/fs, xICA(src,plotIdx), 'LineWidth',1); grid on;
-%     xlabel('Time (s)'); ylabel('Amplitude');
-%     title('Time Domain','Interpreter','none');
-%     nexttile(T2, 5, [1 3]);
-%     data = xICA(src,:);
-%     fAx  = computeFFTFrequencyAxis(length(data), fs);
-%     plot(fAx, abs(fft(data)), 'LineWidth',1); grid on;
-%     xlim([0 maxFreq]); xlabel('Freq (Hz)');
-%     title('Frequency Domain','Interpreter','none');
-%     sgtitle(T2, sprintf('%s: Review candidate (not DIN)', base), 'Interpreter','none');
-% end
-% 
-% % Re-enable warnings
-% warning('on','all');

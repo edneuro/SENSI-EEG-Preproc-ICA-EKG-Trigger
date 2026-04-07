@@ -1,44 +1,50 @@
-# SENSI EEG Preproc — Bad Channel Detection Module
+# SENSI EEG Preproc — EKG & DIN Artifact Detection Module
 
-This repository contains a MATLAB module for semi-automated EEG bad-channel detection with an interactive review UI. The main entry point is `markSusChs.m`.
+This repository contains a MATLAB module for semi-automated detection and removal of EKG (cardiac) and DIN (digital input/trigger) artifacts from EEG data using Independent Component Analysis (ICA). The main entry point is `example.m`.
 
-This introduces a MATLAB Module for bad-channel quality control that emphasizes interpretability, relational structure, and human-in-the-loop validation rather than fully automated rejection. The method operates on multi-channel EEG data and combines complementary channel-level features, including time-dependent neighbor dissimilarity and amplitude- and variance-based statistics to score and pre-label channels as good, suspicious, or bad. To expose shared artifactual structure, channels are additionally grouped using a similarity measure derived from the co-occurrence of robustly detected high-amplitude transients, allowing channels to be reviewed together. Importantly, clustering is used as an exploratory tool to reveal co-artifactual patterns rather than to impose final class labels, which are confirmed through an interactive review interface supported by summary visualizations and grouped channel displays. 
+The module provides automated spectral detection of artifact components followed by interactive review UIs, allowing users to confirm or override automated flags before artifact removal. EKG components are identified via harmonic SNR analysis of the cardiac rhythm band; DIN components are identified via harmonic energy ratios in the trigger-frequency band. Artifact removal is performed by zeroing the flagged ICA components and reconstructing the signal in sensor space.
+
+## Prerequisites
+
+- MATLAB with the following toolboxes:
+  - Signal Processing Toolbox
+  - Statistics and Machine Learning Toolbox
+- Pre-processed EEG data: filtered and bad channels removed (variables `xRaw`, `fs`, and `badCh` (if bad channels were removed))
+- Electrode locations file (e.g., .sfp format; examples provided in `Sensor Layout/` directory)
 
 ## Example data
 
 Example (deidentified) EEG data used by `example.m` are hosted on the Stanford Digital Repository (SDR):
 
 **Data location:**  
-https://purl.stanford.edu/dg856vy8753
+https://purl.stanford.edu/xd818jt7842
 
-The `example.m` script downloads the data files from the SDR URLs into the local `ExampleData/` directory and then runs a demonstration analysis using `markSusChs.m`.
+The `example.m` script downloads the data files automatically into the local `ExampleData/` directory and then runs a demonstration analysis.
 
-For full details about the dataset contents (file descriptions, variables, and notes), see the dataset README provided inside the `ExampleData` folder, or at the SDR link above.
+For full details about the dataset contents (file descriptions, variables, and notes), see the dataset README at the SDR link above.
 
 ## Quick start
 
 1. Clone or download this repository.
 2. Open MATLAB and add the repository (and subfolders) to your path.
-3. Run: example.m
-
+3. Run: `example.m`
 
 ## Reference (please cite)
 
 **Preprint**  
-Amilcar J. Malave and Blair Kaneshiro (2026). “EEG Bad-Channel Detection Using Multi-Feature Thresholding and Co-Occurrence of High-Amplitude Transients”. In: bioRxiv. [DOI: 10.64898/2026.02.04.703874](https://doi.org/10.64898/2026.02.04.703874)
+Amilcar J. Malave & Blair Kaneshiro (2026). "Semi-Automated Identification of EKG and Trigger Artifacts in EEG Using ICA and Spectral Characteristics". bioRxiv. [DOI: 10.64898/2026.02.04.703874](https://doi.org/10.64898/2026.02.04.703874)
 
 **GitHub repository**  
-Amilcar J. Malave and Blair Kaneshiro (2026). Bad-Channel Detection Module (v1.0): A MATLAB
-framework for semi-automated EEG bad-channel detection and review. Stanford University. https://github.com/edneuro/SENSI-EEG-Preproc-bad-ch
+Amilcar J. Malave & Blair Kaneshiro (2026). SENSI-EEG-Preproc-ICA-EKG-Trigger: A MATLAB framework for semi-automated identification of EKG and trigger artifacts in EEG using ICA and spectral characteristics. Stanford University. https://github.com/edneuro/SENSI-EEG-Preproc-ICA-EKG-Trigger
 
 **Dataset**  
-Amilcar J. Malave and Blair Kaneshiro (2025). Example EEG data for the SENSI EEG PREPROC Bad-Channel Detection Module [Data set]. Stanford Digital Repository. 
-https://doi.org/10.25740/dg856vy8753
+Amilcar J. Malave & Blair Kaneshiro (2026). Example Data for SENSI-EEG-Preproc-ICA-EKG-Trigger [Data set]. Stanford Digital Repository.  
+https://doi.org/10.25740/xd818jt7842
 
 
 ## MIT License
 
-Copyright (c) 2025 Amilcar J. Malave, and Blair Kaneshiro.
+Copyright (c) 2026 Amilcar J. Malave, and Blair Kaneshiro.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

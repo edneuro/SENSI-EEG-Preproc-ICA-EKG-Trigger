@@ -1,22 +1,68 @@
 function otherSrcFinal = reviewOtherUI(W, xICA, fs, chanlocs, otherInit, candidates, figName, saveFigs, saveFolder)
-% REVIEWOTHERUI (Paged, ≤4 rows/page)
-% Interactive reviewer for "OTHER" sources with **automatic figure saving**.
-% Each row (4 tiles): [1] Topoplot | [2-4] Time (FULL time series)
-% Click a row to toggle: Reject (red ✗) <-> Keep (green •).
-% Figures are automatically saved upon clicking 'Done' if requested.
+% REVIEWOTHERUI  Paged interactive review UI for ICA components not caught
+%                by the automated EKG or DIN detectors.
 %
-% Inputs:
-%   W, xICA, fs, chanlocs : as in your pipeline
-%   otherInit   : components pre-flagged for REJECT (start red)
-%   candidates  : components to review (start green)
-%   figName     : title in control bar (default 'Review OTHER Sources (fixed)')
-%   saveFigs    : (Optional) Boolean flag (0 or 1). If 1, figures are saved. Defaults to 0.
-%   saveFolder  : (Optional) Path to the saving folder. Defaults to pwd.
+%   OTHERSRCFINAL = REVIEWOTHERUI(W, XICA, FS, CHANLOCS, OTHERINIT,
+%                    CANDIDATES, FIGNAME, SAVEFIGS, SAVEFOLDER)
 %
-% Output:
-%   otherSrcFinal : row vector of final components to REJECT
+%   Opens a paged MATLAB figure (up to pageCap=4 rows per page) where each
+%   row shows a topoplot and the full-length IC time series. Components in
+%   OTHERINIT start flagged red (REJECT); components in CANDIDATES start
+%   green (KEEP). Click anywhere in a row to toggle. Click "Done" to
+%   finalize and return the list of rejected components.
 %
-% --------------------------------------------------------------------------
+%   INPUTS
+%     W           [nCh x nComp] ICA unmixing matrix
+%     xICA        [nComp x nSamp] ICA component time series
+%     fs          Scalar sampling rate (Hz)
+%     chanlocs    Electrode location struct (from chanlocsFromFile)
+%     otherInit   Vector of component indices pre-flagged for REJECT (red)
+%     candidates  Vector of component indices to review (green)
+%     figName     String used as figure title and output filename base
+%     saveFigs    (Optional) 1 = save all pages on Done, 0 = no save (default 0)
+%     saveFolder  (Optional) Output folder for saved figures (default: pwd)
+%
+%   OUTPUTS
+%     otherSrcFinal  Row vector of component indices confirmed for rejection
+%
+%   NOTES
+%     • Pages are navigated with Back/Next buttons; up to pageCap (=4) rows
+%       are shown per page.
+%     • All pages are saved as separate PNGs when saveFigs=1 and Done is clicked.
+%     • Unlike the EKG/DIN UIs, components here start as KEEP (green) by
+%       default since rejection of non-EKG/DIN components should be rare.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Reference (please cite):
+%
+% Module Citation:
+% Malave, A. J., & Kaneshiro, B. (2026). SENSI-EEG-Preproc-ICA-EKG-Trigger:
+% A MATLAB framework for semi-automated identification of EKG and trigger
+% artifacts in EEG using ICA and spectral characteristics. Stanford University.
+% https://github.com/edneuro/SENSI-EEG-Preproc-ICA-EKG-Trigger
+%
+% MIT License
+%
+% Copyright (c) 2026 Amilcar J. Malave, and Blair Kaneshiro.
+%
+% Permission is hereby granted, free of charge, to any person obtaining a
+% copy of this software and associated documentation files (the "Software"),
+% to deal in the Software without restriction, including without limitation
+% the rights to use, copy, modify, merge, publish, distribute, sublicense,
+% and/or sell copies of the Software, and to permit persons to whom the
+% Software is furnished to do so, subject to the following conditions:
+%
+% The above copyright notice and this permission notice shall be included in
+% all copies or substantial portions of the Software.
+%
+% THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+% OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+% FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+% THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+% LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+% FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+% DEALINGS IN THE SOFTWARE.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % -------- Defaults / guards for NEW saving inputs --------
 if nargin < 9 || isempty(saveFolder), saveFolder = pwd; end
@@ -227,6 +273,9 @@ end
 
 % -------- utilities --------
 function centerAndClamp(fig)
+% CENTERANDCLAMP  Center the figure on the current monitor and clamp it
+%   fully on-screen. On multi-monitor setups, targets the monitor with the
+%   greatest overlap with the current figure position.
     if ~ishghandle(fig), return; end
     oldUnits = get(fig,'Units'); set(fig,'Units','pixels');
     pos = get(fig,'Position');     % [x y w h]
@@ -241,6 +290,8 @@ function centerAndClamp(fig)
     set(fig,'Units', oldUnits);
 end
 function a = overlapArea(aPos, bPos)
+% OVERLAPAREA  Return the pixel overlap area between two rectangles.
+%   aPos, bPos : [x y w h] in pixels.
     ax1=aPos(1); ay1=aPos(2); ax2=ax1+aPos(3); ay2=ay1+aPos(4);
     bx1=bPos(1); by1=bPos(2); bx2=bx1+bPos(3); by2=by1+bPos(4);
     iw = max(0, min(ax2,bx2) - max(ax1,bx1));
@@ -248,5 +299,6 @@ function a = overlapArea(aPos, bPos)
     a = iw*ih;
 end
 function out = tern(cond, a, b)
+% TERN  Inline ternary: returns A if COND is true, B otherwise.
     if cond, out = a; else, out = b; end
 end
