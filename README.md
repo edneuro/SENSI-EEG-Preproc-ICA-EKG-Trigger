@@ -35,7 +35,7 @@ For full details about the dataset contents (file descriptions, variables, and n
 Amilcar J. Malave & Blair Kaneshiro (2026). "Semi-Automated Identification of EKG and Trigger Artifacts in EEG Using ICA and Spectral Characteristics". bioRxiv. [DOI: 10.64898/2026.02.04.703874](https://doi.org/10.64898/2026.02.04.703874)
 
 **GitHub repository**  
-Amilcar J. Malave & Blair Kaneshiro (2026). SENSI-EEG-Preproc-ICA-EKG-Trigger: A MATLAB framework for semi-automated identification of EKG and trigger artifacts in EEG using ICA and spectral characteristics. Stanford University. https://github.com/edneuro/SENSI-EEG-Preproc-ICA-EKG-Trigger
+Amilcar J. Malave & Blair Kaneshiro (2026). SENSI-EEG-Preproc-ICA-EKG-Trigger (v1.0): A MATLAB framework for semi-automated identification of EKG and trigger artifacts in EEG using ICA and spectral characteristics. Stanford University. https://github.com/edneuro/SENSI-EEG-Preproc-ICA-EKG-Trigger
 
 **Dataset**  
 Amilcar J. Malave & Blair Kaneshiro (2026). Example Data for SENSI-EEG-Preproc-ICA-EKG-Trigger [Data set]. Stanford Digital Repository.  
