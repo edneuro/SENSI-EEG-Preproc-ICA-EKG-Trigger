@@ -1,4 +1,4 @@
-# SENSI EEG Preproc — EKG & DIN Artifact Detection Module
+# SENSI EEG Preproc — ICA-EKG-Trigger Module
 
 This repository contains a MATLAB module for semi-automated detection and removal of EKG (cardiac) and DIN (digital input/trigger) artifacts from EEG data using Independent Component Analysis (ICA). The main entry point is `example.m`.
 
@@ -10,7 +10,7 @@ The module provides automated spectral detection of artifact components followed
   - Signal Processing Toolbox
   - Statistics and Machine Learning Toolbox
 - Pre-processed EEG data: filtered and bad channels removed (variables `xRaw`, `fs`, and `badCh` (if bad channels were removed))
-- Electrode locations file (e.g., .sfp format; examples provided in `Sensor Layout/` directory)
+- Electrode locations file (e.g., .sfp format; examples provided in `Sensor Layouts/` directory)
 
 ## Example data
 
@@ -32,10 +32,10 @@ For full details about the dataset contents (file descriptions, variables, and n
 ## Reference (please cite)
 
 **Preprint**  
-Amilcar J. Malave & Blair Kaneshiro (2026). "Semi-Automated Identification of EKG and Trigger Artifacts in EEG Using ICA and Spectral Characteristics". bioRxiv. [DOI: 10.64898/2026.02.04.703874](https://doi.org/10.64898/2026.02.04.703874)
+Amilcar J. Malave & Blair Kaneshiro (2026). "Semi-Automated Identification of EKG and Trigger Artifacts in EEG Using ICA and Spectral Characteristics". bioRxiv. [DOI: 10.64898/2026.04.08.717297](https://doi.org/10.64898/2026.04.08.717297)
 
 **GitHub repository**  
-Amilcar J. Malave & Blair Kaneshiro (2026). SENSI-EEG-Preproc-ICA-EKG-Trigger (v1.0): A MATLAB framework for semi-automated identification of EKG and trigger artifacts in EEG using ICA and spectral characteristics. Stanford University. https://github.com/edneuro/SENSI-EEG-Preproc-ICA-EKG-Trigger
+Amilcar J. Malave & Blair Kaneshiro (2026). SENSI-EEG-Preproc-ICA-EKG-Trigger (v1.0): A MATLAB framework for semi-automated identification of EKG and trigger artifacts in EEG using ICA and spectral characteristics. Stanford University. https://github.com/edneuro/SENSI-EEG-Preproc-ICA-EKG-Trigger. [DOI: 10.25740/pm515wq0875](https://doi.org/10.25740/pm515wq0875)
 
 **Dataset**  
 Amilcar J. Malave & Blair Kaneshiro (2026). Example Data for SENSI-EEG-Preproc-ICA-EKG-Trigger [Data set]. Stanford Digital Repository.  
