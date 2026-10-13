@@ -33,8 +33,9 @@ function [finalSrc, added] = reviewArtifactUIV2(kind, W, xICA, fs, chanlocs, src
 %     .icChannels  true  open the IC power-per-channel window beside the review
 %     .maxFreq     |FFT| x-limit (Hz): ekg 10, din 60 (as released)
 %
-%   Clicking Done saves every page (when saveFigs: <figName>.png for one page,
-%   <figName>_p1.png, _p2.png ... for more) and returns. Closing the window with its X
+%   Clicking Done saves each page that holds a component flagged for REJECT (red)
+%   (when saveFigs: <figName>.png for one page, <figName>_p1.png, _p2.png ... for
+%   more, numbered by page; pages with none are not saved) and returns. Closing the window with its X
 %   also returns, with the colours as they stand, and saves nothing.
 %
 %   See also reviewEkgArtifactUIV2, reviewDINArtifactUIV2, autoDetectEkgV2, autoDetectDINV2
@@ -306,8 +307,11 @@ return;
     function savePages()
         if isempty(list), return; end                 % nothing drawn, nothing to save
         if ~isfolder(opts.saveFolder), mkdir(opts.saveFolder); end
-        base = strrep(opts.figName, ' ', '_'); p0 = page;
+        base = strrep(opts.figName, ' ', '_'); p0 = page; nSaved = 0;
         for p = 1:nPages()
+            % only pages holding a component flagged for REJECT (red)
+            if ~any(isRed((p-1)*rpp + 1 : min(p*rpp, numel(list)))), continue; end
+            nSaved = nSaved + 1;
             page = p; redraw(); drawnow;
             if nPages() == 1, fn = fullfile(opts.saveFolder, [base '.png']);
             else, fn = fullfile(opts.saveFolder, sprintf('%s_p%d.png', base, p)); end
@@ -320,6 +324,7 @@ return;
                 warning('reviewArtifactUIV2:SaveError', 'Could not save "%s": %s', fn, ME.message);
             end
         end
+        if nSaved == 0, fprintf('No component flagged for REJECT: no page saved.\n'); end
         page = p0; redraw();
     end
 
